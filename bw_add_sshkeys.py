@@ -128,9 +128,9 @@ def add_ssh_keys(
 
 
 def fetch_key(session: str, item: dict[str, Any], keyname: str) -> str:
-    if "fields" in item and "attachments" in item:
+    if "attachments" in item:
         logging.debug(
-            "Item %s has custom fields and attachments - searching for %s",
+            "Item %s has attachments - searching for %s",
             item["name"],
             keyname,
         )
@@ -161,16 +161,14 @@ def fetch_from_attachment(session: str, item: dict[str, Any], keyname: str) -> s
         private_key_file = [k["value"] for k in item["fields"] if k["name"] == keyname][
             0
         ]
-    except IndexError:
-        raise RuntimeWarning(
-            'No "%s" field found for item %s' % (keyname, item["name"])
+    except Exception:
+        logging.warning(
+            'No "%s" field found for item %s -- falling back to the default "id_" attachment' % (keyname, item["name"])
         )
-
-    logging.debug("Private key file declared")
 
     try:
         private_key_id = [
-            k["id"] for k in item["attachments"] if k["fileName"] == private_key_file
+            k["id"] for k in item["attachments"] if private_key_file and k["fileName"] == private_key_file or k["fileName"].startswith("id_")
         ][0]
     except IndexError:
         raise RuntimeWarning(
