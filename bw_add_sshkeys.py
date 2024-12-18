@@ -144,10 +144,7 @@ def fetch_key(session: str, item: dict[str, Any], keyname: str) -> str:
 
     logging.debug("Couldn't find an ssh key in attachments - falling back to notes")
 
-    # no way to validate the key without extra dependencies
-    # maybe check if the key starts with '----'?
-    # or just pass it to ssh-agent, and let it fail?
-    if isinstance(item["notes"], str):
+    if isinstance(item["notes"], str) and item["notes"].startswith("-----BEGIN"):
         return item["notes"]
 
     raise RuntimeError("Could not find an SSH key on item %s" % item["name"])
