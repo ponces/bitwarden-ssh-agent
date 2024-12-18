@@ -95,6 +95,7 @@ def add_ssh_keys(
     items: list[dict[str, Any]],
     keyname: str,
     pwkeyname: str,
+    pwkey: str,
 ) -> None:
     """
     Function to attempt to get keys from a vault item
@@ -108,7 +109,7 @@ def add_ssh_keys(
             logging.error(str(error))
             continue
 
-        private_key_pw = ""
+        private_key_pw = pwkey
 
         if "fields" in item:
             try:
@@ -266,6 +267,12 @@ if __name__ == "__main__":
             help="custom field name where key passphrase is stored",
         )
         parser.add_argument(
+            "-w",
+            "--passphrase",
+            default="",
+            help="passphrase for the SSH keys",
+        )
+        parser.add_argument(
             "-s",
             "--session",
             default="",
@@ -300,7 +307,7 @@ if __name__ == "__main__":
             items = folder_items(session, folder_id)
 
             logging.info("Attempting to add keys to ssh-agent")
-            add_ssh_keys(session, items, args.customfield, args.passphrasefield)
+            add_ssh_keys(session, items, args.customfield, args.passphrasefield, args.passphrase)
         except RuntimeError as error:
             logging.critical(str(error))
         except subprocess.CalledProcessError as error:
