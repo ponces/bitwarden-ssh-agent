@@ -63,11 +63,12 @@ def get_folders(session: str, foldername: str) -> str:
     folders = json.loads(proc_folders.stdout)
 
     try:
-        return str([k["id"] for k in folders if k["name"] == foldername][0])
+        folder = str([k["id"] for k in folders if k["name"] == foldername][0])
     except IndexError:
-        pass
+        logging.debug('"%s" folder not found - falling back to root folder', foldername)
+        folder = "null"
 
-    raise RuntimeError('"%s" folder not found' % foldername)
+    return folder
 
 
 def folder_items(session: str, folder_id: str) -> list[dict[str, Any]]:
