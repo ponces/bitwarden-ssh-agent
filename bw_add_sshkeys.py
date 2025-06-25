@@ -97,6 +97,7 @@ def add_ssh_keys(
     pwkeyname: str,
     pwkey: str,
     legacymode: bool,
+    quiet: bool,
 ) -> None:
     """
     Function to attempt to get keys from a vault item
@@ -124,7 +125,7 @@ def add_ssh_keys(
                 )
 
         try:
-            ssh_add(ssh_key, private_key_pw)
+            ssh_add(ssh_key, private_key_pw, quiet)
         except subprocess.SubprocessError:
             logging.warning('Could not add key "%s" to the SSH agent', item["name"])
 
@@ -211,7 +212,7 @@ def fetch_from_attachment(session: str, item: dict[str, Any], keyname: str) -> s
     return proc_attachment.stdout
 
 
-def ssh_add(ssh_key: str, key_pw: str = "") -> None:
+def ssh_add(ssh_key: str, key_pw: str = "", quiet: bool = False) -> None:
     """
     Adds the key to the agent
     """
@@ -230,10 +231,14 @@ def ssh_add(ssh_key: str, key_pw: str = "") -> None:
     if not ssh_key.endswith("\n"):
         logging.debug("Adding a line break at the end of the key")
         ssh_key += "\n"
+    
+    quietFlag = ""
+    if quiet:
+        quietFlag = "-q"
 
     # CAVEAT: `ssh-add` provides no useful output, even with maximum verbosity
     subprocess.run(
-        ["ssh-add", "-"],
+        ["ssh-add", quietFlag, "-"],
         input=ssh_key.encode("utf-8"),
         # Works even if ssh-askpass is not installed
         env=envdict,
@@ -254,6 +259,12 @@ if __name__ == "__main__":
             "--debug",
             action="store_true",
             help="show debug output",
+        )
+        parser.add_argument(
+            "-q",
+            "--quiet",
+            action="store_true",
+            help="only show warnings and errors",
         )
         parser.add_argument(
             "-f",
@@ -303,6 +314,8 @@ if __name__ == "__main__":
 
         if args.debug:
             loglevel = logging.DEBUG
+        elif args.quiet:
+            loglevel = logging.CRITICAL
         else:
             loglevel = logging.INFO
 
@@ -320,7 +333,7 @@ if __name__ == "__main__":
             items = folder_items(session, folder_id)
 
             logging.info("Attempting to add keys to ssh-agent")
-            add_ssh_keys(session, items, args.customfield, args.passphrasefield, args.passphrase, args.legacymode)
+            add_ssh_keys(session, items, args.customfield, args.passphrasefield, args.passphrase, args.legacymode, args.quiet)
         except RuntimeError as error:
             logging.critical(str(error))
         except subprocess.CalledProcessError as error:
