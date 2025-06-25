@@ -96,6 +96,7 @@ def add_ssh_keys(
     keyname: str,
     pwkeyname: str,
     pwkey: str,
+    legacymode: bool,
 ) -> None:
     """
     Function to attempt to get keys from a vault item
@@ -104,7 +105,7 @@ def add_ssh_keys(
         logging.info("----------------------------------")
         logging.info('Processing item "%s"', item["name"])
         try:
-            ssh_key = fetch_key(session, item, keyname)
+            ssh_key = fetch_key(session, item, keyname, legacymode)
         except RuntimeError as error:
             logging.error(str(error))
             continue
@@ -128,7 +129,16 @@ def add_ssh_keys(
             logging.warning('Could not add key "%s" to the SSH agent', item["name"])
 
 
-def fetch_key(session: str, item: dict[str, Any], keyname: str) -> str:
+def fetch_key(session: str, item: dict[str, Any], keyname: str, legacymode: bool) -> str:
+    if "sshKey" in item and item["sshKey"].get("privateKey"):
+        logging.debug("Item %s has an ssh key - using it", item["name"])
+        return item["sshKey"].get("privateKey")
+
+    if not legacymode:
+        raise RuntimeError("Item %s does not have an ssh key" % item["name"])
+
+    logging.debug("Couldn't find an ssh key - falling back to attachments")
+
     if "attachments" in item:
         logging.debug(
             "Item %s has attachments - searching for %s",
@@ -270,6 +280,12 @@ if __name__ == "__main__":
             help="passphrase for the SSH keys",
         )
         parser.add_argument(
+            "-l",
+            "--legacymode",
+            action="store_true",
+            help="use legacy mode to fetch keys from attachments and notes",
+        )
+        parser.add_argument(
             "-s",
             "--session",
             default="",
@@ -304,7 +320,7 @@ if __name__ == "__main__":
             items = folder_items(session, folder_id)
 
             logging.info("Attempting to add keys to ssh-agent")
-            add_ssh_keys(session, items, args.customfield, args.passphrasefield, args.passphrase)
+            add_ssh_keys(session, items, args.customfield, args.passphrasefield, args.passphrase, args.legacymode)
         except RuntimeError as error:
             logging.critical(str(error))
         except subprocess.CalledProcessError as error:
